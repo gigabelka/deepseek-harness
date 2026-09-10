@@ -1,0 +1,11 @@
+# The extension host loads only lib/extension.cjs; the runtime/ tree is staged
+# per target by scripts/package-target.ts. Everything else is build input.
+src/**
+lib/types/**
+lib/**/*.map
+tests/**
+scripts/**
+tsconfig.json
+tsdown.config.ts
+.vscode/**
+node_modules/**

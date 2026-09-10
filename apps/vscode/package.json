@@ -1,0 +1,80 @@
+{
+  "name": "@deepseek-ai/dsh-vscode",
+  "displayName": "DeepSeek Harness",
+  "description": "DeepSeek Harness web UI inside a VS Code webview",
+  "version": "0.1.5-rc.1",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "main": "lib/extension.cjs",
+  "publisher": "deepseek-ai",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "contributes": {
+    "commands": [
+      {
+        "command": "dsh.open",
+        "title": "DeepSeek Harness: Open"
+      },
+      {
+        "command": "dsh.restart",
+        "title": "DeepSeek Harness: Restart Runtime"
+      },
+      {
+        "command": "dsh.showLogs",
+        "title": "DeepSeek Harness: Show Logs"
+      }
+    ],
+    "configuration": {
+      "title": "DeepSeek Harness",
+      "properties": {
+        "dsh.executablePath": {
+          "type": "string",
+          "default": "",
+          "description": "Absolute path to a dsh executable. Takes precedence over every other candidate."
+        },
+        "dsh.runtime": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "workspace",
+            "bundled"
+          ],
+          "default": "auto",
+          "enumDescriptions": [
+            "Prefer a workspace or PATH dsh, then fall back to the bundled runtime.",
+            "Use only a workspace or PATH dsh; never fall back to the bundled runtime.",
+            "Use only the runtime bundled with this extension."
+          ],
+          "description": "Which dsh runtime the extension launches."
+        },
+        "dsh.readinessTimeoutMs": {
+          "type": "number",
+          "default": 180000,
+          "minimum": 1000,
+          "description": "How long to wait for the dsh web readiness line before giving up. The first boot of a fresh profile installs packages and is slow."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "tsc -b && tsdown",
+    "prepare:runtime": "tsx scripts/prepare-runtime.ts",
+    "package": "tsx scripts/package-target.ts"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "@types/vscode": "^1.90.0",
+    "@types/ws": "^8.5.13",
+    "@vscode/vsce": "^3.2.0",
+    "typescript": "^6.0.3"
+  }
+}

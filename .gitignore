@@ -23,12 +23,17 @@ tmp/
 .claude/launch.json
 .claude/settings.json
 .vscode/
+# The extension ships its own F5 launch configuration; it is source, not local state.
+!apps/vscode/.vscode/
 .DS_Store
 .idea
 mise.toml
 dist-exe/
 /dist/
 apps/desktop/.desktop-build/
+# Staged single-file runtimes and the .vsix archives built from them.
+apps/vscode/runtime/
+apps/vscode/dist/
 python/sdk-runtime/src/deepseek_harness_runtime/runtime/deepseek-harness-sdk-runtime-*
 python/sdk-runtime/src/deepseek_harness_runtime/runtime/node/
 python/**/__pycache__/
