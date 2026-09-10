@@ -1,16 +1,17 @@
-/** VS Code activation entry: commands and the panel's lifetime. */
+/** VS Code activation entry: commands, auto-open, and the panel's lifetime. */
 
 import * as vscode from 'vscode'
 import { createLogger, describeCause } from './log.ts'
+import { projectFolders, shouldAutoOpen } from './startup.ts'
 import { HarnessPanel } from './webview/panel.ts'
 
 let panel: HarnessPanel | undefined
 
 /**
- * Register the extension's commands.
+ * Register the extension's commands and open the panel when configured to.
  *
- * Nothing is spawned here: the runtime boots on the first `dsh.open`, so a
- * window that never opens the panel never pays for it.
+ * The runtime itself boots on the first `dsh.open` — or on activation through
+ * `dsh.autoOpen` — so a window that never opens the panel never pays for it.
  * @param context - the extension context owning every disposable.
  */
 export function activate(context: vscode.ExtensionContext): void {
@@ -21,19 +22,27 @@ export function activate(context: vscode.ExtensionContext): void {
   panel = harness
   context.subscriptions.push({ dispose: () => { void harness.dispose() } })
 
-  const run = (name: string, action: () => Promise<void>): vscode.Disposable =>
-    vscode.commands.registerCommand(name, () => {
-      void action().catch((cause: unknown) => {
-        logger.error(`${name} failed`, cause)
-        void vscode.window.showErrorMessage(`DeepSeek Harness: ${describeCause(cause)}`)
-      })
+  // Every path that touches the runtime reports the same way: a command
+  // failure and a failed auto-open are equally invisible without it.
+  const report = (what: string, action: () => Promise<void>): void => {
+    void action().catch((cause: unknown) => {
+      logger.error(`${what} failed`, cause)
+      void vscode.window.showErrorMessage(`DeepSeek Harness: ${describeCause(cause)}`)
     })
+  }
+  const run = (name: string, action: () => Promise<void>): vscode.Disposable =>
+    vscode.commands.registerCommand(name, () => { report(name, action) })
 
   context.subscriptions.push(
     run('dsh.open', () => harness.show()),
     run('dsh.restart', () => harness.restart()),
     run('dsh.showLogs', () => { channel.show(); return Promise.resolve() }),
   )
+
+  const settings = vscode.workspace.getConfiguration('dsh')
+  if (shouldAutoOpen(settings.get<boolean>('autoOpen') ?? true, projectFolders(vscode.workspace.workspaceFolders))) {
+    report('dsh.open', () => harness.show())
+  }
 }
 
 /**

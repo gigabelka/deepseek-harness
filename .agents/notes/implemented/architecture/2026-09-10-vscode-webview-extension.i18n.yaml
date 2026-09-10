@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-09-10-vscode-webview-extension.md
-2026-09-10-vscode-webview-extension.md: 09776ec5ee95443aa4f72d039b35b787fccc0dcd
-2026-09-10-vscode-webview-extension.zh.md: 0ce9d335a08f517aa44be2fcbc96fabf17cb4ff6
+2026-09-10-vscode-webview-extension.md: b08d8e42ac6767ee654f3c39d35ee1d8d55eed1c
+2026-09-10-vscode-webview-extension.zh.md: 1f713ed96e02c8b2575566129437d0c4b02b306a

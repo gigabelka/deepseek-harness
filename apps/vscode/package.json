@@ -14,7 +14,9 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "contributes": {
     "commands": [
       {
@@ -33,6 +35,26 @@
     "configuration": {
       "title": "DeepSeek Harness",
       "properties": {
+        "dsh.autoOpen": {
+          "type": "boolean",
+          "default": true,
+          "description": "Open the DeepSeek Harness panel automatically when a window with a file workspace folder starts. A window with no such folder never opens one."
+        },
+        "dsh.permissionMode": {
+          "type": "string",
+          "enum": [
+            "read-only",
+            "workspace-write",
+            "danger-full-access"
+          ],
+          "default": "workspace-write",
+          "enumDescriptions": [
+            "The runtime may not modify files; writes are refused unless the session is granted a wider mode.",
+            "The runtime may modify files under the opened project folder and permitted temporary directories.",
+            "The runtime may modify any file the extension host can reach."
+          ],
+          "description": "File-effect mode the extension launches the runtime with, passed as DSH_PERMISSION_MODE. It sets the process fallback; a permission preset a user picks in the UI still wins for the sessions it applies to."
+        },
         "dsh.executablePath": {
           "type": "string",
           "default": "",

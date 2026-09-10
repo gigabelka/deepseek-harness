@@ -30,6 +30,8 @@ The index rewrite is two substitutions, in `src/webview/html.ts`. Replacing `<ba
 
 `dsh --profile web` is the launcher, so the application-launch rule holds; the extension is a supervisor consuming the documented readiness line. No profile name is reserved and `apps/cli/src/args.ts` is untouched.
 
+The extension activates on `onStartupFinished` and opens the panel itself when `dsh.autoOpen` (default true) is set and the window holds at least one `file`-scheme workspace folder; `src/startup.ts` owns both rules without importing `vscode`, so the empty-window case is a tested predicate rather than an untestable branch. The first folder is the child's working directory and therefore the `workspace-write` root of every session it serves, and `dsh.permissionMode` (default `workspace-write`) is exported to the child as `DSH_PERMISSION_MODE`, overriding an inherited value so the mode a user sees in settings is the one the runtime starts from. That mode is a process fallback only: the permission preset a user picks in the UI still wins for the sessions it applies to.
+
 The extension runs in the VS Code extension host, not a Cordis context, so `ctx.effect()` does not apply; `context.subscriptions` carries the same disposal discipline.
 
 ## Alternatives considered

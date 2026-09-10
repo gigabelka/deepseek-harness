@@ -30,6 +30,8 @@ Harness 目前只把 VS Code 当作一个可以启动的外部应用：`packages
 
 启动器是 `dsh --profile web`，因此应用启动规则成立；扩展是消费文档化就绪行的监督者。没有保留任何 profile 名称，`apps/cli/src/args.ts` 未被改动。
 
+扩展在 `onStartupFinished` 时激活，并在 `dsh.autoOpen`（默认 true）开启、且窗口至少持有一个 `file` 方案的工作区文件夹时自行打开面板；两条规则都由 `src/startup.ts` 掌握且不导入 `vscode`，因此「空窗口」这一分支是被测试覆盖的判定，而非无法测试的分支。第一个文件夹即子进程的工作目录，因而也是它所服务的每个会话的 `workspace-write` 根；`dsh.permissionMode`（默认 `workspace-write`）以 `DSH_PERMISSION_MODE` 导出给子进程，并覆盖继承来的取值，从而让用户在设置中看到的模式就是运行时启动时采用的模式。该模式只是进程级兜底：用户在 UI 中选择的权限预设对它所适用的会话仍然优先。
+
 扩展运行在 VS Code 扩展宿主中，而非 Cordis 上下文，因此 `ctx.effect()` 不适用；`context.subscriptions` 承担同样的释放纪律。
 
 ## Alternatives considered

@@ -13,6 +13,30 @@ const PROBE_TIMEOUT_MS = 10_000
 /** How much stderr to retain for diagnostics when the child dies early. */
 const STDERR_TAIL_BYTES = 4_096
 
+/** Environment variable carrying the file-effect mode into the runtime. */
+export const PERMISSION_MODE_ENV = 'DSH_PERMISSION_MODE'
+
+/**
+ * File-effect modes the runtime accepts, in increasing reach. Mirrors the
+ * `SandboxMode` vocabulary of `packages/sandbox/sandbox-policy`; the extension
+ * declares no workspace dependency on it, so the wire value is restated here.
+ */
+export const PERMISSION_MODES = ['read-only', 'workspace-write', 'danger-full-access'] as const
+
+/** One file-effect mode the runtime can be launched with. */
+export type PermissionMode = typeof PERMISSION_MODES[number]
+
+/**
+ * Interpret the `dsh.permissionMode` setting.
+ * @param value - the raw setting value, of any type.
+ * @returns the value when it names a mode, otherwise `workspace-write`.
+ */
+export function resolvePermissionMode(value: unknown): PermissionMode {
+  return typeof value === 'string' && (PERMISSION_MODES as readonly string[]).includes(value)
+    ? value as PermissionMode
+    : 'workspace-write'
+}
+
 /** The loopback endpoint a booted `dsh web` published. */
 export interface WebEndpoint {
   /** Port the server bound, always on 127.0.0.1. */
@@ -93,6 +117,8 @@ export interface ServerLaunchRequest {
   readonly command: string
   /** Working directory, which `dsh` adopts as the workspace root. */
   readonly cwd: string
+  /** File-effect mode the child starts from, exported as {@link PERMISSION_MODE_ENV}. */
+  readonly permissionMode: PermissionMode
   /** How long to wait for the readiness line. */
   readonly readinessTimeoutMs: number
   /** Diagnostics sink; the child's stderr is mirrored into it. */
@@ -104,7 +130,10 @@ export interface ServerLaunchRequest {
  *
  * `--port 0` avoids colliding with a `dsh web` the user already runs, and
  * `--no-open` suppresses the browser handoff because the UI belongs in the
- * webview.
+ * webview. The extension's own mode setting wins over an inherited
+ * `DSH_PERMISSION_MODE`, so the value a user sees in VS Code settings is the
+ * one the runtime starts from; the rest of the parent environment is passed
+ * through unchanged, because the child needs the credentials it carries.
  * @param request - launch inputs.
  * @returns the running server once it has published its endpoint.
  * @throws when the child exits early or never announces readiness.
@@ -113,7 +142,11 @@ export async function startWebServer(request: ServerLaunchRequest): Promise<Runn
   const child = spawnRuntime(
     request.command,
     ['--profile', 'web', '--port', '0', '--no-open'],
-    { cwd: request.cwd, stdio: ['ignore', 'pipe', 'pipe'] },
+    {
+      cwd: request.cwd,
+      env: { ...process.env, [PERMISSION_MODE_ENV]: request.permissionMode },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    },
   )
   let stderrTail = ''
   child.stderr?.setEncoding('utf8')

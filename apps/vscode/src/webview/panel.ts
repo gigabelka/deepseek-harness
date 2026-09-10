@@ -4,8 +4,15 @@ import * as vscode from 'vscode'
 import type { Logger } from '../log.ts'
 import { startAssetProxy, type AssetProxy } from '../proxy/asset-proxy.ts'
 import { resolveRuntime, type RuntimePreference } from '../runtime/resolve.ts'
-import { probeRuntimeVersion, startWebServer, type RunningServer } from '../runtime/server.ts'
+import {
+  PERMISSION_MODE_ENV,
+  probeRuntimeVersion,
+  resolvePermissionMode,
+  startWebServer,
+  type RunningServer,
+} from '../runtime/server.ts'
 import { openSession, type HarnessSession } from '../runtime/session.ts'
+import { projectFolders } from '../startup.ts'
 import { attachBridge, type Bridge } from './bridge.ts'
 import { BRIDGE_SCRIPT } from './bridge-client.ts'
 import { transformIndexHtml } from './html.ts'
@@ -71,9 +78,7 @@ export class HarnessPanel {
 
   private async boot(): Promise<void> {
     const settings = vscode.workspace.getConfiguration('dsh')
-    const folders = (vscode.workspace.workspaceFolders ?? [])
-      .filter(folder => folder.uri.scheme === 'file')
-      .map(folder => folder.uri.fsPath)
+    const folders = projectFolders(vscode.workspace.workspaceFolders)
 
     const runtime = await resolveRuntime({
       preference: settings.get<RuntimePreference>('runtime') ?? 'auto',
@@ -87,9 +92,16 @@ export class HarnessPanel {
     }, probeRuntimeVersion)
     this.logger.info(`using dsh ${runtime.version} from ${runtime.source} (${runtime.command})`)
 
+    // The first folder is the workspace root the runtime adopts; it is also the
+    // `workspace-write` boundary every session under this process starts from.
+    const cwd = folders[0] ?? this.extensionPath
+    const permissionMode = resolvePermissionMode(settings.get<unknown>('permissionMode'))
+    this.logger.info(`rooting the harness at ${cwd} as ${PERMISSION_MODE_ENV}=${permissionMode}`)
+
     const server = await startWebServer({
       command: runtime.command,
-      cwd: folders[0] ?? this.extensionPath,
+      cwd,
+      permissionMode,
       readinessTimeoutMs: settings.get<number>('readinessTimeoutMs') ?? 180_000,
       logger: this.logger,
     })
