@@ -18,12 +18,6 @@ subagent/, workflow/, skill/, plan/, todo/, guard/ — делегировани�
 sdk/ и python/ — SDK (JSON-RPC + TypeScript-клиент и Python-рантайм), acp/ — сервер Agent Client Protocol.
 Для разработки: pnpm-монорепозиторий с жёсткими требованиями — strict TypeScript, 100% покрытие на уровне файлов, bilingual-документация, обязательные Agent Notes для нетривиальных изменений, снапшот-тесты ключевых сценариев.
 
-Кстати, я сам сейчас работаю внутри этого проекта: DSH — это тот харнесс, который исполняет меня как агента в веб-GUI на
-http://127.0.0.1:62069
-.
-
-Основные источники, которые я прочитал: README.md и docs/architecture.md — там же ссылки на документацию проекта.
-
 # DeepSeek Harness — расширение для VS Code
 
 Расширение показывает веб‑интерфейс DeepSeek Harness (`dsh web`) внутри панели
@@ -39,16 +33,8 @@ VS Code. Оно поднимает рантайм `dsh`, проксирует е
 ## 1. Предпосылки
 
 - **Node 24.**
-- **`pnpm` в PATH нет** — используется `corepack` (идёт с Node):
-  все команды пакета запускаются как `corepack pnpm …`.
-- Для полной сборки монорепо (нужна только ради рантайма `dsh`, см. §5) требуется
-  **pnpm‑шим**: `scripts/build.ts` вызывает вложенный `pnpm` из PATH.
-  Создать один раз:
-  ```powershell
-  $dir = "C:\Users\viktor\AppData\Local\claude-pnpm-shim"
-  corepack enable --install-directory $dir pnpm
-  ```
-  и добавлять `$dir` в начало `PATH` на время сборки.
+- **`pnpm` установлен в системе** и доступен в `PATH` — все команды пакета
+  запускаются как `pnpm …`.
 - **IDE CLI:**
   `C:\Users\viktor\AppData\Local\Programs\Antigravity IDE\bin\antigravity-ide.cmd`
   — это стандартный `cli.js` VS Code, понимает `--install-extension`,
@@ -59,8 +45,8 @@ VS Code. Оно поднимает рантайм `dsh`, проксирует е
 ## 2. Сборка расширения
 
 ```powershell
-corepack pnpm install                                        # один раз
-corepack pnpm --filter @deepseek-ai/dsh-vscode run build
+pnpm install                                                # один раз
+pnpm --filter @deepseek-ai/dsh-vscode run build
 ```
 
 `build` = `tsc -b && tsdown`. Результат — единственный рантайм‑файл
@@ -72,7 +58,7 @@ corepack pnpm --filter @deepseek-ai/dsh-vscode run build
 Тесты расширения (необязательно):
 
 ```powershell
-corepack pnpm exec vitest run apps/vscode
+pnpm exec vitest run apps/vscode
 ```
 
 ---
@@ -86,14 +72,14 @@ corepack pnpm exec vitest run apps/vscode
 ```powershell
 cd apps/vscode
 node -e "const f='package.json',p=require('./'+f);p.name='dsh-vscode';require('fs').writeFileSync(f,JSON.stringify(p,null,2)+'\n')"
-corepack pnpm exec vsce package --no-dependencies --out dist/dsh-vscode.vsix
+pnpm exec vsce package --no-dependencies --out dist/dsh-vscode.vsix
 git checkout -- package.json     # вернуть @deepseek-ai/dsh-vscode
 cd ../..
 ```
 
 Предупреждения `vsce` про отсутствующие `repository` и `LICENSE` — безвредны.
 
-> Штатный скрипт `corepack pnpm --filter @deepseek-ai/dsh-vscode run package -- --no-runtime`
+> Штатный скрипт `pnpm --filter @deepseek-ai/dsh-vscode run package -- --no-runtime`
 > (`scripts/package-target.ts`, кладёт `dist/dsh-no-runtime.vsix`) внутри вызывает
 > тот же `vsce`, поэтому спотыкается о scoped‑имя так же — перед ним нужен тот же
 > временный `rename` из блока выше.
@@ -132,10 +118,9 @@ cd ../..
 (`src/runtime/resolve.ts`). В этом монорепозитории `dsh` не линкуется в
 `node_modules/.bin`, поэтому задайте путь явно.
 
-1. Собрать монорепо (с шимом в `PATH`):
+1. Собрать монорепо:
    ```powershell
-   $env:PATH = "C:\Users\viktor\AppData\Local\claude-pnpm-shim;$env:PATH"
-   corepack pnpm run build
+   pnpm run build
    ```
 2. Обёртка `tmp/dsh-dev/dsh.cmd`:
    ```bat
