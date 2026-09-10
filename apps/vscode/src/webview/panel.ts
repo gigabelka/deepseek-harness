@@ -143,7 +143,6 @@ export class HarnessPanel {
     // `<base>` is what sends its assets to the proxy instead.
     panel.webview.html = transformIndexHtml(index.body.toString('utf8'), {
       proxyOrigin: proxy.origin,
-      nonce: proxy.nonce,
       bridgeScript: BRIDGE_SCRIPT,
     })
   }

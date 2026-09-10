@@ -7,8 +7,6 @@ const SERVED_BASE_TAG = '<base href="/">'
 export interface IndexTransformRequest {
   /** Origin of the extension's asset proxy, e.g. `http://localhost:51234`. */
   readonly proxyOrigin: string
-  /** Unguessable path prefix the proxy requires, without slashes. */
-  readonly nonce: string
   /** Page-side transport installer, inlined ahead of every boot script. */
   readonly bridgeScript: string
 }
@@ -16,18 +14,19 @@ export interface IndexTransformRequest {
 /**
  * Point the served index at the extension's proxy and install the transport.
  *
- * Exactly two edits are made. Replacing `<base href="/">` re-anchors every
- * root-absolute URL in the document at once — the `/plugins/??…` combo bundles,
- * the Vite assets, the manifest and the favicon — so no per-URL rewriting is
- * needed and nothing has to know the shape of the server's index injections.
- * The bridge is inserted immediately after, ahead of the boot scripts that read
- * `globalThis.__DSH_TRANSPORT__`.
+ * Exactly two edits are made. Replacing `<base href="/">` with a base that
+ * carries the proxy origin re-homes the document: relative refs (the Vite
+ * `assets/…` bundle) and root-absolute refs (the `/plugins/??…` combo scripts
+ * the module loader emits) alike then resolve onto the proxy origin, so no
+ * per-URL rewriting is needed and nothing has to know the shape of the server's
+ * index injections. The bridge is inserted immediately after, ahead of the boot
+ * scripts that read `globalThis.__DSH_TRANSPORT__`.
  *
  * The CSP must keep `'unsafe-inline'` and must not carry a nonce: the index
  * contains several inline scripts whose text the server owns, and under CSP3 a
  * nonce would override `'unsafe-inline'` and stop them executing.
  * @param html - the index exactly as `dsh web` served it.
- * @param request - proxy origin, path nonce, and bridge source.
+ * @param request - proxy origin and bridge source.
  * @returns the document to hand the webview.
  * @throws when the base tag is absent, meaning the server composition changed.
  */
@@ -45,12 +44,12 @@ export function transformIndexHtml(html: string, request: IndexTransformRequest)
 }
 
 /**
- * Absolute URL every relative document reference resolves against.
- * @param request - proxy origin and path nonce.
- * @returns the proxy root, with the trailing slash `<base>` requires.
+ * Absolute URL every document reference resolves against.
+ * @param request - the proxy origin.
+ * @returns the proxy origin with the trailing slash `<base>` requires.
  */
-export function proxyRoot(request: Pick<IndexTransformRequest, 'proxyOrigin' | 'nonce'>): string {
-  return `${request.proxyOrigin}/${request.nonce}/`
+export function proxyRoot(request: Pick<IndexTransformRequest, 'proxyOrigin'>): string {
+  return `${request.proxyOrigin}/`
 }
 
 function contentSecurityPolicy(proxyOrigin: string): string {

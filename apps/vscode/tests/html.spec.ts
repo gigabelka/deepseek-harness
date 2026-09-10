@@ -3,7 +3,6 @@ import { proxyRoot, transformIndexHtml } from '../src/webview/html.ts'
 
 const REQUEST = {
   proxyOrigin: 'http://localhost:51234',
-  nonce: 'abc123',
   bridgeScript: 'globalThis.marker=1',
 } as const
 
@@ -17,9 +16,9 @@ const SERVED_INDEX = '<!doctype html><html><head><base href="/">'
   + '</head><body><script type="module" src="./assets/index-abc.js"></script></body></html>'
 
 describe('transformIndexHtml', () => {
-  it('re-anchors the document at the proxy root', () => {
+  it('re-anchors the document at the proxy origin', () => {
     expect(transformIndexHtml(SERVED_INDEX, REQUEST))
-      .toContain('<base href="http://localhost:51234/abc123/">')
+      .toContain('<base href="http://localhost:51234/">')
   })
 
   it('drops the served root base so assets never resolve at the webview origin', () => {
@@ -52,7 +51,7 @@ describe('transformIndexHtml', () => {
 })
 
 describe('proxyRoot', () => {
-  it('ends in the slash a base href needs to resolve siblings', () => {
-    expect(proxyRoot(REQUEST)).toBe('http://localhost:51234/abc123/')
+  it('is the proxy origin with the trailing slash a base href needs', () => {
+    expect(proxyRoot(REQUEST)).toBe('http://localhost:51234/')
   })
 })
