@@ -16,5 +16,8 @@ export default defineConfig({
   dts: false,
   clean: false,
   // `vscode` is injected by the extension host and is never installable.
-  deps: { neverBundle: ['vscode'] },
+  // `ws` is a real npm dependency, but the `.vsix` is packaged with
+  // `vsce --no-dependencies`, so it must be inlined into `extension.cjs`
+  // rather than left as a bare `require('ws')` the host cannot resolve.
+  deps: { neverBundle: ['vscode'], alwaysBundle: ['ws'] },
 })
