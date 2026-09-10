@@ -165,3 +165,7 @@ cd ../..
 Host с расширением прямо из исходников; `preLaunchTask` «build extension»
 (`.vscode/tasks.json`) предварительно собирает `lib/`. Пересборка после правок —
 повторный запуск этой задачи или `Ctrl+Shift+P` → **Tasks: Run Build Task**.
+
+DeepSeek Harness: Open
+Developer: Reload Window
+Developer: Open Webview Developer Tools
