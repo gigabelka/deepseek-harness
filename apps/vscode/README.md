@@ -158,25 +158,43 @@ CLI IDE выбирается так:
 
 ## 5. Настройка рантайма `dsh`
 
-Расширение ищет `dsh` в порядке: workspace/PATH → bundled
-(`src/runtime/resolve.ts`). В этом монорепозитории `dsh` не линкуется в
+Расширение ищет `dsh` в порядке: `dsh.executablePath` → workspace → PATH →
+bundled (`src/runtime/resolve.ts`). В этом монорепозитории `dsh` не линкуется в
 `node_modules/.bin`, поэтому задайте путь явно.
 
-1. Собрать монорепо:
+1. Собрать монорепо и веб-UI:
    ```powershell
-   pnpm run build
+   pnpm run build       # host + client бандлы пакетов (lib/index.js, lib/client.js)
+   pnpm run build:web   # apps/web/dist — страница, которую отдаёт dsh web
    ```
+   `pnpm run build` не собирает `apps/web/dist`. Если клиентская часть не
+   собралась, её можно пересобрать отдельно: `pnpm run build:lib:client`.
 2. Обёртка `tmp/dsh-dev/dsh.cmd`:
    ```bat
    @echo off
    node "C:\MyProj\deepseek-harness\apps\cli\lib\bin.js" %*
    ```
-3. В `apps/vscode/.vscode/settings.json` (файл в `.gitignore`):
+   Проверка: `tmp\dsh-dev\dsh.cmd --version` печатает версию.
+3. В пользовательских настройках той IDE, где установлено расширение
+   (Antigravity IDE: `%APPDATA%\Antigravity IDE\User\settings.json`;
+   VS Code: `%APPDATA%\Code\User\settings.json`):
    ```json
    {
      "dsh.executablePath": "C:\\MyProj\\deepseek-harness\\tmp\\dsh-dev\\dsh.cmd"
    }
    ```
+   `apps/vscode/.vscode/settings.json` (файл в `.gitignore`) действует только
+   в окне, где открыта папка `apps/vscode`.
+
+Типичные ошибки:
+
+| Сообщение                                                     | Причина и исправление                                                                                  |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `no usable dsh runtime; tried N candidate(s)`                 | `dsh.executablePath` не прочитан: настройка записана не в ту IDE или профиль                          |
+| `dsh web exited with code 1 … ERR_MODULE_NOT_FOUND …/lib/index.js` | не собраны бандлы пакетов: `pnpm run build:lib:client`                                          |
+| `dsh web returned HTTP 404 for the UI index`                  | нет `apps/web/dist`: `pnpm run build:web`                                                              |
+
+После пересборки: **DeepSeek Harness: Restart Runtime**.
 
 ---
 
@@ -214,6 +232,7 @@ Host с расширением прямо из исходников; `preLaunchT
 
 - **DeepSeek Harness: Open**
 - **Developer: Reload Window**
+- **DeepSeek Harness: Restart Runtime**
 - **Developer: Open Webview Developer Tools**
 
 - **pnpm run build:vscode # сборка + упаковка -> apps/vscode/dist/dsh-no-runtime.vsix**
