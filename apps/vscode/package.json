@@ -87,7 +87,9 @@
   "scripts": {
     "build": "tsc -b && tsdown",
     "prepare:runtime": "tsx scripts/prepare-runtime.ts",
-    "package": "tsx scripts/package-target.ts"
+    "package": "tsx scripts/package-target.ts",
+    "package:vsix": "pnpm run build && tsx scripts/package-target.ts --no-runtime",
+    "install:ide": "tsx scripts/install-ide.ts"
   },
   "dependencies": {
     "ws": "^8.18.0"

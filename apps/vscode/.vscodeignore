@@ -3,6 +3,8 @@
 src/**
 lib/types/**
 lib/**/*.map
+lib/*.tsbuildinfo
+dist/**
 tests/**
 scripts/**
 tsconfig.json

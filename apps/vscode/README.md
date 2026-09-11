@@ -51,8 +51,8 @@ VS Code. Оно поднимает рантайм `dsh`, проксирует е
 страницу с расширением по `postMessage`‑мосту.
 
 Ниже — как собрать расширение и как поставить его в текущую IDE
-(**Antigravity IDE** — форк VS Code; для обычного VS Code замените CLI
-`antigravity-ide` на `code`).
+(**Antigravity IDE** — форк VS Code; для обычного VS Code установка берёт CLI
+`code`, см. §4).
 
 ---
 
@@ -62,16 +62,32 @@ VS Code. Оно поднимает рантайм `dsh`, проксирует е
 - **`pnpm` установлен в системе** и доступен в `PATH` — все команды пакета
   запускаются как `pnpm …`.
 - **IDE CLI:**
-  `C:\Users\viktor\AppData\Local\Programs\Antigravity IDE\bin\antigravity-ide.cmd`
+  `%LOCALAPPDATA%\Programs\Antigravity IDE\bin\antigravity-ide.cmd`
   — это стандартный `cli.js` VS Code, понимает `--install-extension`,
-  `--list-extensions`, `--force`.
+  `--list-extensions`, `--force`. `pnpm run install:vscode` находит его сам
+  (§4).
+
+---
+
+## Коротко: две команды из корня репозитория
+
+```powershell
+pnpm install                  # один раз
+pnpm run build:vscode         # сборка + упаковка -> apps/vscode/dist/dsh-no-runtime.vsix
+pnpm run install:vscode       # установка .vsix в IDE (--force) + список версий
+```
+
+После установки: `Ctrl+Shift+P` → **Developer: Reload Window**. Подробности —
+в §2–§4.
 
 ---
 
 ## 2. Сборка расширения
 
+`pnpm run build:vscode` (в пакете — `package:vsix`) выполняет `build` и сразу
+упаковку из §3. Только сборка без упаковки:
+
 ```powershell
-pnpm install                                                # один раз
 pnpm --filter @deepseek-ai/dsh-vscode run build
 ```
 
@@ -91,27 +107,22 @@ pnpm exec vitest run apps/vscode
 
 ## 3. Упаковка в `.vsix`
 
-`vsce` не принимает scoped‑имя `@deepseek-ai/dsh-vscode`
-(`ERROR Invalid extension name`), поэтому имя нужно **временно** сделать
-безскоупным на время упаковки и сразу вернуть обратно:
+Упаковку делает `scripts/package-target.ts` (скрипт `package`); вариант без
+рантайма запускает `pnpm run build:vscode`, результат —
+`apps/vscode/dist/dsh-no-runtime.vsix`. Без пересборки:
 
 ```powershell
-cd apps/vscode
-node -e "const f='package.json',p=require('./'+f);p.name='dsh-vscode';require('fs').writeFileSync(f,JSON.stringify(p,null,2)+'\n')"
-pnpm exec vsce package --no-dependencies --out dist/dsh-vscode.vsix
-git checkout -- package.json     # вернуть @deepseek-ai/dsh-vscode
-cd ../..
+pnpm --filter @deepseek-ai/dsh-vscode run package -- --no-runtime
 ```
 
-Предупреждения `vsce` про отсутствующие `repository` и `LICENSE` — безвредны.
+`vsce` не принимает scoped‑имя `@deepseek-ai/dsh-vscode`
+(`ERROR Invalid extension name`), поэтому скрипт на время вызова `vsce`
+записывает в `package.json` имя `dsh-vscode` и затем возвращает исходный файл
+байт в байт, в том числе при ошибке упаковки. Предупреждения `vsce` про
+отсутствующие `repository` и `LICENSE` — безвредны.
 
-> Штатный скрипт `pnpm --filter @deepseek-ai/dsh-vscode run package -- --no-runtime`
-> (`scripts/package-target.ts`, кладёт `dist/dsh-no-runtime.vsix`) внутри вызывает
-> тот же `vsce`, поэтому спотыкается о scoped‑имя так же — перед ним нужен тот же
-> временный `rename` из блока выше.
-
-В архив по `.vscodeignore` попадают только `lib/extension.cjs` и `package.json`
-(≈50 КБ). Исполняемый `dsh` в архив **не** кладётся при `--no-runtime` —
+В архив по `.vscodeignore` попадают только `lib/extension.cjs`, `package.json`
+и `README.md` (≈45 КБ). Исполняемый `dsh` в архив **не** кладётся при `--no-runtime` —
 расширение берёт рантайм по настройке (§5).
 
 ---
@@ -119,17 +130,24 @@ cd ../..
 ## 4. Установка в Antigravity IDE
 
 ```powershell
-& "C:\Users\viktor\AppData\Local\Programs\Antigravity IDE\bin\antigravity-ide.cmd" `
-  --install-extension "C:\MyProjects\deepseek-harness\apps\vscode\dist\dsh-vscode.vsix" --force
+pnpm run install:vscode
+# Installing ...\apps\vscode\dist\dsh-no-runtime.vsix
+#   via ...\Antigravity IDE\bin\antigravity-ide.cmd
+# deepseek-ai.dsh-vscode@0.1.5-rc.1
 ```
 
-Проверить:
+Скрипт `scripts/install-ide.ts` (в пакете — `install:ide`) вызывает
+`<cli> --install-extension <vsix> --force`, затем выводит установленные
+расширения `dsh`. Если `.vsix` нет, он завершается ошибкой с подсказкой
+запустить `pnpm run build:vscode`. Другой архив:
+`pnpm --filter @deepseek-ai/dsh-vscode run install:ide --vsix dist/dsh-win32-x64.vsix`.
 
-```powershell
-& "C:\Users\viktor\AppData\Local\Programs\Antigravity IDE\bin\antigravity-ide.cmd" `
-  --list-extensions --show-versions | Select-String dsh
-# -> deepseek-ai.dsh-vscode@0.1.5-rc.1
-```
+CLI IDE выбирается так:
+
+1. переменная окружения `DSH_IDE_CLI`, если задана;
+2. `%LOCALAPPDATA%\Programs\Antigravity IDE\bin\antigravity-ide.cmd`, если файл
+   существует;
+3. `code` из `PATH` (обычный VS Code).
 
 Затем в IDE: `Ctrl+Shift+P` → **Developer: Reload Window**
 (установка через CLI не подхватывается на лету).
@@ -151,12 +169,12 @@ cd ../..
 2. Обёртка `tmp/dsh-dev/dsh.cmd`:
    ```bat
    @echo off
-   node "C:\MyProjects\deepseek-harness\apps\cli\lib\bin.js" %*
+   node "C:\MyProj\deepseek-harness\apps\cli\lib\bin.js" %*
    ```
 3. В `apps/vscode/.vscode/settings.json` (файл в `.gitignore`):
    ```json
    {
-     "dsh.executablePath": "C:\\MyProjects\\deepseek-harness\\tmp\\dsh-dev\\dsh.cmd"
+     "dsh.executablePath": "C:\\MyProj\\deepseek-harness\\tmp\\dsh-dev\\dsh.cmd"
    }
    ```
 
@@ -197,3 +215,6 @@ Host с расширением прямо из исходников; `preLaunchT
 - **DeepSeek Harness: Open**
 - **Developer: Reload Window**
 - **Developer: Open Webview Developer Tools**
+
+- **pnpm run build:vscode # сборка + упаковка -> apps/vscode/dist/dsh-no-runtime.vsix**
+- **pnpm run install:vscode # установка .vsix в IDE с --force + список версий**

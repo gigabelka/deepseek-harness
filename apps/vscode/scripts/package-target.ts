@@ -8,7 +8,7 @@
  */
 
 import { spawn } from 'node:child_process'
-import { rm } from 'node:fs/promises'
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
 
@@ -39,11 +39,14 @@ async function main(): Promise<void> {
   }
 
   const outDir = values.out ?? 'dist'
+  // `vsce package --out` does not create a missing directory.
+  await mkdir(resolve(extensionDir, outDir), { recursive: true })
   if (values['no-runtime'] === true) {
     // Users who already have dsh installed take a far smaller archive; the
     // extension then resolves the workspace or PATH executable as usual.
     await rm(join(extensionDir, 'runtime'), { recursive: true, force: true })
-    await run('vsce', ['package', '--no-dependencies', '--out', join(outDir, 'dsh-no-runtime.vsix')])
+    await withUnscopedManifestName(() =>
+      run('vsce', ['package', '--no-dependencies', '--out', join(outDir, 'dsh-no-runtime.vsix')]))
     return
   }
 
@@ -59,18 +62,47 @@ async function main(): Promise<void> {
       '--platform', source.platform,
       '--arch', source.arch,
     ])
-    await run('vsce', [
+    await withUnscopedManifestName(() => run('vsce', [
       'package',
       '--no-dependencies',
       '--target', target,
       '--out', join(outDir, `dsh-${target}.vsix`),
-    ])
+    ]))
+  }
+}
+
+/**
+ * Run `pack` while the manifest carries an unscoped `name`.
+ *
+ * `vsce` rejects the workspace name `@deepseek-ai/dsh-vscode` as an invalid
+ * extension name, so the manifest temporarily holds the part after the scope.
+ * The original bytes are written back whether or not `pack` succeeds.
+ */
+async function withUnscopedManifestName(pack: () => Promise<void>): Promise<void> {
+  const manifestPath = join(extensionDir, 'package.json')
+  const original = await readFile(manifestPath, 'utf8')
+  const manifest = JSON.parse(original) as { name: string }
+  if (!manifest.name.startsWith('@')) {
+    await pack()
+    return
+  }
+  manifest.name = manifest.name.slice(manifest.name.indexOf('/') + 1)
+  await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
+  try {
+    await pack()
+  } finally {
+    await writeFile(manifestPath, original)
   }
 }
 
 function run(command: string, args: readonly string[]): Promise<void> {
   return new Promise<void>((settle, reject) => {
-    const child = spawn('pnpm', ['exec', command, ...args], { cwd: extensionDir, stdio: 'inherit' })
+    // On Windows `pnpm` is a `.cmd` shim, which Node starts only through a
+    // shell; the shell then takes one command line with every part quoted.
+    const argv = ['pnpm', 'exec', command, ...args]
+    const child = process.platform === 'win32'
+      ? spawn(argv.map(part => `"${part}"`).join(' '), { cwd: extensionDir, stdio: 'inherit', shell: true })
+      : spawn('pnpm', argv.slice(1), { cwd: extensionDir, stdio: 'inherit' })
     child.once('error', reject)
     child.once('close', (code) => {
       if (code === 0) settle()
